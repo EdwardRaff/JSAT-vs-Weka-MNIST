@@ -23,16 +23,21 @@ import jsat.ARFFLoader;
 import jsat.classifiers.*;
 import jsat.classifiers.knn.NearestNeighbour;
 import jsat.classifiers.linear.*;
+import jsat.classifiers.linear.kernelized.KernelSGD;
+import jsat.classifiers.svm.DCDs;
 import jsat.classifiers.svm.PlatSMO;
 import jsat.classifiers.svm.SupportVectorLearner;
 import jsat.classifiers.trees.*;
 import jsat.clustering.SeedSelectionMethods;
 import jsat.clustering.kmeans.*;
 import jsat.datatransform.*;
+import jsat.datatransform.kernel.RFF_RBF;
+import jsat.distributions.kernels.KernelPoint;
 import jsat.distributions.kernels.RBFKernel;
 import jsat.linear.*;
 import jsat.linear.distancemetrics.EuclideanDistance;
 import jsat.linear.vectorcollection.*;
+import jsat.lossfunctions.HingeLoss;
 import jsat.lossfunctions.SoftmaxLoss;
 
 /**
@@ -66,6 +71,16 @@ public class JSATMNIST
         smo.setCacheMode(SupportVectorLearner.CacheMode.NONE);
         evaluate(new OneVSOne(smo), mnistTrainJSAT, mnistTestJSAT, new LinearTransform.LinearTransformFactory());
         
+        System.out.println("RBF SVM stochastic w/ 5 iterations");
+        KernelSGD ksgd = new KernelSGD(new HingeLoss(), new RBFKernel(5.65685), 1/(2*mnistTrainJSAT.getSampleSize()*8.0), KernelPoint.BudgetStrategy.MERGE_RBF, 1000);
+        ksgd.setEpochs(5);
+        evaluate(ksgd, mnistTrainJSAT, mnistTestJSAT, new LinearTransform.LinearTransformFactory());
+        
+        System.out.println("RBF SVM RKS features w/ Linear Solver");
+        DCDs dcds = new DCDs();
+        dcds.setC(8.0);
+        dcds.setUseL1(true);
+        evaluate(new OneVSOne(dcds), mnistTrainJSAT, mnistTestJSAT, new LinearTransform.LinearTransformFactory(), new RFF_RBF.RFF_RBFTransformFactory(5.65685, 1000, true));
         
         System.out.println("Decision Tree C45");
         DecisionTree jsatC45 = DecisionTree.getC45Tree();
